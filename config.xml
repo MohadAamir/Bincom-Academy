@@ -1,0 +1,29 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget xmlns="http://www.w3.org/ns/widgets" version="1.0.0" id="com.example.app">
+    <name>MyCordovaApp</name>
+    <description>A Cordova App using JSONBin.io</description>
+    <author email="you@example.com">Your Name</author>
+
+    <!-- Allow external resources (CORS) -->
+    <allow-navigation href="*" />
+    <allow-intent href="*" />
+    <access origin="*" />
+
+    <!-- Plugins -->
+    <plugin name="cordova-plugin-whitelist" />
+    <plugin name="cordova-plugin-camera" />
+
+    <!-- Android-specific settings -->
+    <platform name="android">
+        <allow-navigation href="*" />
+        <allow-intent href="*" />
+        <access origin="*" />
+    </platform>
+
+    <!-- browser-specific settings -->
+    <platform name="browser">
+        <allow-navigation href="*" />
+        <allow-intent href="*" />
+        <access origin="*" />
+    </platform>
+</widget>

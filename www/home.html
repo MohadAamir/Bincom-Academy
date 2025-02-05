@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: gap: ms-appdata: https://ssl.gstatic.com 'unsafe-eval'; style-src 'self' 'unsafe-inline'; media-src *; img-src 'self' data: content:;">
+        <meta name="format-detection" content="telephone=no">
+        <meta name="msapplication-tap-highlight" content="no">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .post { border: 1px solid #ddd; padding: 10px; margin-bottom: 15px; }
+        .post img, .post video { max-width: 100%; display: block; margin-top: 10px; }
+        .actions button { margin-right: 5px; }
+        #new-post-form { display: none; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <button id="create-post-btn">Create Post</button>
+
+    <div id="new-post-form">
+        <textarea id="post-content" placeholder="Write your post..."></textarea>
+        <input type="file" id="media-upload" accept="image/*,video/*">
+        <button onclick="captureMedia()">Capture Media</button>
+        <button onclick="submitPost()">Submit</button>
+        <button onclick="cancelPost()">Cancel</button>
+    </div>
+
+    <div id="blog-container"></div>
+
+    <script>
+        const API_KEY = "$2a$10$2iI26ZXlmuXw/E9t/tZwLeocbw6nWMmBe3Bp.VxfkWeTAOO3dd52y";
+        const API_URL = "https://cors-anywhere.herokuapp.com/https://api.jsonbin.io/v3/b/67a02775ad19ca34f8f8ca0f/latest";
+
+        const headers = {
+            "Content-Type": "application/json",
+            "X-Master-Key": API_KEY,
+            "X-Bin-Versioning": "false"
+        };
+
+        document.getElementById('create-post-btn').addEventListener('click', () => {
+            document.getElementById('new-post-form').style.display = 'block';
+        });
+
+        function fetchPosts() { // Fetch posts from JSON Bin
+            fetch(`${API_URL}/latest`, { headers })
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Fetched Data:", data); // Debugging log
+                    if (data.record && Array.isArray(data.record.posts)) {
+                        displayPosts(data.record.posts);
+                    } else {
+                        console.error("Invalid Data Structure:", data);
+                    }
+                })
+                .catch(error => console.error("Error fetching posts:", error));
+        }
+
+        function displayPosts(posts) { // Display posts from JSON Bin
+            const container = document.getElementById('blog-container');
+            container.innerHTML = '';
+            posts.forEach((post, index) => {
+                const postDiv = document.createElement('div');
+                postDiv.classList.add('post');
+                postDiv.innerHTML = `
+                    <p>${post.text}</p>
+                    ${post.media ? `<img src="${post.media}" />` : ""}
+                    <div class="actions">
+                        <button onclick="editPost(${index})">Edit</button>
+                        <button onclick="deletePost(${index})">Delete</button>
+                    </div>
+                `;
+                container.appendChild(postDiv);
+            });
+        }
+
+        function submitPost() { // Submit Post after creating it
+            const text = document.getElementById('post-content').value;
+            const mediaInput = document.getElementById('media-upload').files[0];
+
+            if (!text.trim() && !mediaInput) {
+                alert("Post cannot be empty.");
+                return;
+            }
+
+            // Read media file as base64
+            if (mediaInput) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    savePost({ text, media: e.target.result });
+                };
+                reader.readAsDataURL(mediaInput);
+            } else {
+                savePost({ text, media: "" });
+            }
+        }
+
+        function savePost(newPost) { // Save post function
+            fetch(`${API_URL}/latest`, { headers })
+                .then(response => response.json())
+                .then(data => {
+                    let posts = data.record?.posts || [];
+                    posts.push(newPost);
+
+                    return fetch(API_URL, {
+                        method: "PUT",
+                        headers,
+                        body: JSON.stringify({ posts })
+                    });
+                })
+                .then(response => response.json())
+                .then(() => {
+                    console.log("Post successfully added.");
+                    fetchPosts();
+                    document.getElementById('new-post-form').style.display = 'none';
+                    document.getElementById('post-content').value = '';
+                    document.getElementById('media-upload').value = '';
+                })
+                .catch(error => console.error("Error saving post:", error));
+        }
+
+        function editPost(index) { // Edit Post Function
+            fetch(`${API_URL}/latest`, { headers })
+                .then(response => response.json())
+                .then(data => {
+                    let posts = data.record?.posts || [];
+                    let newText = prompt("Edit your post:", posts[index].text);
+                    if (newText !== null) {
+                        posts[index].text = newText;
+                        return fetch(API_URL, {
+                            method: "PUT",
+                            headers,
+                            body: JSON.stringify({ posts })
+                        });
+                    }
+                })
+                .then(() => fetchPosts())
+                .catch(error => console.error("Error editing post:", error));
+        }
+
+        function deletePost(index) { // Delete Post Funtion
+            fetch(`${API_URL}/latest`, { headers })
+                .then(response => response.json())
+                .then(data => {
+                    let posts = data.record?.posts || [];
+                    posts.splice(index, 1);
+                    return fetch(API_URL, {
+                        method: "PUT",
+                        headers,
+                        body: JSON.stringify({ posts })
+                    });
+                })
+                .then(() => fetchPosts())
+                .catch(error => console.error("Error deleting post:", error));
+        }
+
+        function captureMedia() { // Media upload feature
+            navigator.camera.getPicture(onSuccess, onFail, {
+                quality: 50,
+                destinationType: Camera.DestinationType.DATA_URL
+            });
+
+            function onSuccess(imageData) {
+                const dataUrl = "data:image/jpeg;base64," + imageData;
+                document.getElementById('media-upload').setAttribute("data-url", dataUrl);
+            }
+
+            function onFail(message) {
+                alert('Failed because: ' + message);
+            }
+        }
+
+        fetchPosts(); // Load posts on startup
+    </script>
+</body>
+</html>
